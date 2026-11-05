@@ -1,0 +1,27 @@
+# Налаштування статичного аналізу проєкту expense_journal.
+#
+# За основу взято набір `recommended` з package:lints (вимога 1.2 п. 4
+# методичних вказівок) і додано суворіші перевірки типів та кілька правил
+# з Effective Dart.
+
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    # Забороняє неявне приведення dynamic до конкретного типу.
+    strict-casts: true
+    # Вимагає, щоб компілятор міг вивести тип, а не підставляв dynamic.
+    strict-inference: true
+    # Забороняє узагальнені типи без аргументів (List замість List<String>).
+    strict-raw-types: true
+
+linter:
+  rules:
+    # Усі публічні оголошення мають документаційні коментарі ///.
+    - public_member_api_docs
+    # Локальні змінні, які не змінюються, оголошуються як final.
+    - prefer_final_locals
+    - prefer_const_declarations
+    - prefer_single_quotes
+    - directives_ordering
+    - always_declare_return_types
