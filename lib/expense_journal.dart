@@ -4,4 +4,7 @@
 /// виконується функціями, класи не використовуються.
 library;
 
+export 'expense.dart';
 export 'expense_data.dart';
+export 'expense_parser.dart';
+export 'expense_validator.dart';
