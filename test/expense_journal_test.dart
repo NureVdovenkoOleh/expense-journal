@@ -60,4 +60,36 @@ void main() {
       expect(validateExpense(expense, today: today), hasLength(2));
     });
   });
+
+  group('аналітика', () {
+    final expenses = validExpenses(
+      rawExpenses.map(parseExpense),
+      today: DateTime(2026, 11, 8),
+    );
+
+    test('відбирає 15 коректних витрат', () {
+      expect(expenses, hasLength(15));
+    });
+
+    test('рахує суму в гривнях', () {
+      expect(totalAmount(expenses, currency: 'UAH'), closeTo(6254.45, 0.001));
+    });
+
+    test('повертає null для середнього у відсутній валюті', () {
+      expect(averageAmount(expenses, currency: 'PLN'), isNull);
+    });
+
+    test('групує витрати за категорією', () {
+      expect(groupByCategory(expenses)['Продукти'], hasLength(3));
+    });
+
+    test('сортує за сумою за спаданням', () {
+      final sorted = sortExpenses(
+        inCurrency(expenses, currency: 'UAH'),
+        compare: compareByAmount,
+        ascending: false,
+      );
+      expect(sorted.first.amount, 1630.75);
+    });
+  });
 }
