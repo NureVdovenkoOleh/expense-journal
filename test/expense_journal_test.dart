@@ -92,4 +92,53 @@ void main() {
       expect(sorted.first.amount, 1630.75);
     });
   });
+
+  group('дати', () {
+    final expense = (
+      date: DateTime(2026, 10, 30),
+      category: 'Навчання',
+      amount: 640.0,
+      currency: 'UAH',
+      paymentMethod: 'переказ',
+      note: '',
+    );
+
+    test('форматує дату як ДД.ММ.РРРР', () {
+      expect(formatDate(DateTime(2026, 3, 7)), '07.03.2026');
+    });
+
+    test('рахує вік запису в днях', () {
+      expect(ageInDays(expense, today: DateTime(2026, 11, 9)), 10);
+    });
+
+    test('предикат olderThan запам’ятовує поріг', () {
+      final isOld = olderThan(
+        const Duration(days: 7),
+        today: DateTime(2026, 11, 9),
+      );
+      expect(isOld(expense), isTrue);
+    });
+  });
+
+  group('звіт', () {
+    test('маскує номер картки', () {
+      expect(
+        maskCardNumbers('Обід, картка 5375 4141 0000 9876'),
+        'Обід, картка 5375 **** **** 9876',
+      );
+    });
+
+    test('не змінює текст без номера картки', () {
+      expect(maskCardNumbers('Кіно'), 'Кіно');
+    });
+
+    test('містить загальну суму й приховує номери карток', () {
+      final report = buildReport(
+        validExpenses(rawExpenses.map(parseExpense)),
+        today: DateTime(2026, 11, 9),
+      );
+      expect(report, contains('Разом: 6254.45'));
+      expect(report, isNot(contains('4141 0000')));
+    });
+  });
 }
