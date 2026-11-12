@@ -15,4 +15,5 @@ export 'expense_dates.dart';
 export 'expense_parser.dart';
 export 'expense_report.dart';
 export 'expense_validator.dart';
+export 'identifiable.dart';
 export 'payment_method.dart';

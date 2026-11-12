@@ -1,12 +1,13 @@
 /// Формування текстового звіту за журналом витрат.
 library;
 
+import 'currency.dart';
 import 'expense.dart';
 import 'expense_analytics.dart';
 import 'expense_dates.dart';
 
 /// Валюта звіту за замовчуванням.
-const defaultCurrency = 'UAH';
+const defaultCurrency = Currency.uah;
 
 /// Кількість знаків після коми для сум.
 const amountFractionDigits = 2;
@@ -45,7 +46,7 @@ String buildReport(
   int topCount = 5,
   bool ascending = false,
   String separator = ' | ',
-  String currency = defaultCurrency,
+  Currency currency = defaultCurrency,
   DateTime? today,
 }) {
   final reference = today ?? DateTime.now();
@@ -54,7 +55,7 @@ String buildReport(
     ..writeln('Сформовано: ${formatDate(reference)}')
     ..writeln('Коректних записів: ${items.length}')
     ..writeln()
-    ..writeln('Підсумки ($currency)')
+    ..writeln('Підсумки (${currency.code})')
     ..writeln('  Разом: ${_money(totalAmount(items, currency: currency))}');
 
   final average = averageAmount(items, currency: currency);
@@ -70,12 +71,14 @@ String buildReport(
 
   final isStale = olderThan(staleAge, today: reference);
   buffer
+    ..writeln('  Усі валюти в гривнях: ${_money(totalInUah(items))}')
+    ..writeln('  Комісії банку в гривнях: ${_money(totalFeesInUah(items))}')
     ..writeln(
       '  Записів, давніших за ${staleAge.inDays} днів: '
       '${items.where(isStale).length}',
     )
     ..writeln()
-    ..writeln('За категоріями ($currency)');
+    ..writeln('За категоріями (${currency.code})');
 
   final totals = totalsByCategory(items, currency: currency).entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
@@ -88,9 +91,10 @@ String buildReport(
     compare: compareByAmount,
     ascending: ascending,
   );
+  final order = ascending ? 'Найменші' : 'Найбільші';
   buffer
     ..writeln()
-    ..writeln('${ascending ? 'Найменші' : 'Найбільші'} витрати ($currency)');
+    ..writeln('$order витрати (${currency.code})');
   for (final expense in byAmount.take(topCount)) {
     buffer.writeln(_row(expense, separator: separator, today: reference));
   }
@@ -114,7 +118,8 @@ String _row(
 }) => [
   formatDate(expense.date),
   expense.category,
-  '${_money(expense.amount)} ${expense.currency}',
+  '${_money(expense.amount)} ${expense.currency.code}',
+  expense.paymentMethod.describe(),
   '${ageInDays(expense, today: today)} дн. тому',
   maskCardNumbers(expense.note),
 ].join(separator);

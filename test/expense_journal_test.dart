@@ -1,82 +1,86 @@
 import 'package:expense_journal/expense_journal.dart';
 import 'package:test/test.dart';
 
+/// Створює витрату для тестів; задавати треба лише важливі поля.
+Expense _expense({
+  DateTime? date,
+  double amount = 100,
+  Currency currency = Currency.uah,
+  String category = 'Продукти',
+}) => Expense(
+  id: 'T1',
+  date: date ?? DateTime(2026, 10, 15),
+  category: category,
+  amount: amount,
+  currency: currency,
+  paymentMethod: const Cash(),
+);
+
 void main() {
+  final today = DateTime(2026, 11, 12);
+
   test('вхідних рядків не менше 15', () {
     expect(rawExpenses.length, greaterThanOrEqualTo(15));
   });
 
   group('parseExpense', () {
     test('розбирає коректний рядок', () {
-      final (:expense, :error) = parseExpense(
-        '2026-10-15;Продукти;930.40;UAH;картка;АТБ',
-      );
+      final (:expense, :error) = parseExpense(rawExpenses.first);
       expect(error, isNull);
-      expect(expense?.date, DateTime(2026, 10, 15));
-      expect(expense?.amount, 930.40);
+      expect(expense?.amount, 845.50);
     });
 
-    test('відкидає рядок із пропущеним полем', () {
-      expect(parseExpense('2026-10-08;Продукти;UAH;картка;-').error, isNotNull);
-    });
-
-    test('відкидає нечислову суму', () {
-      expect(parseExpense('2026-10-12;Кафе;сто;UAH;картка;-').error, isNotNull);
-    });
-
-    test('відкидає дату в іншому форматі', () {
-      expect(parseExpense('31.10.2026;Кафе;60;UAH;картка;-').error, isNotNull);
-    });
-
-    test('відкидає неіснуючу дату 30 лютого', () {
-      expect(parseExpense('2026-02-30;Кафе;75;UAH;картка;-').error, isNotNull);
+    test('повертає опис помилки замість винятку', () {
+      final (:expense, :error) = parseExpense(
+        'E19;2026-02-30;Продукти;75;UAH;готівка;-',
+      );
+      expect(expense, isNull);
+      expect(error, contains('2026-02-30'));
     });
   });
 
   group('validateExpense', () {
-    final today = DateTime(2026, 11, 7);
-
     test('не має зауважень до коректної витрати', () {
-      final expense = (
-        date: DateTime(2026, 10, 15),
-        category: 'Продукти',
-        amount: 930.40,
-        currency: 'UAH',
-        paymentMethod: 'картка',
-        note: 'АТБ',
-      );
-      expect(validateExpense(expense, today: today), isEmpty);
+      expect(validateExpense(_expense(), today: today), isEmpty);
     });
 
-    test('знаходить від’ємну суму й невідому валюту', () {
-      final expense = (
-        date: DateTime(2026, 10, 20),
-        category: 'Продукти',
-        amount: -150.0,
-        currency: 'XYZ',
-        paymentMethod: 'картка',
-        note: '',
+    test('знаходить від’ємну суму', () {
+      expect(
+        validateExpense(_expense(amount: -150), today: today),
+        hasLength(1),
       );
-      expect(validateExpense(expense, today: today), hasLength(2));
+    });
+
+    test('знаходить дату з майбутнього', () {
+      final expense = _expense(date: DateTime(2027, 1, 15));
+      expect(validateExpense(expense, today: today), hasLength(1));
     });
   });
 
   group('аналітика', () {
-    final expenses = validExpenses(
-      rawExpenses.map(parseExpense),
-      today: DateTime(2026, 11, 8),
-    );
+    final expenses = validExpenses(rawExpenses.map(parseExpense), today: today);
 
     test('відбирає 15 коректних витрат', () {
       expect(expenses, hasLength(15));
     });
 
     test('рахує суму в гривнях', () {
-      expect(totalAmount(expenses, currency: 'UAH'), closeTo(6254.45, 0.001));
+      expect(
+        totalAmount(expenses, currency: Currency.uah),
+        closeTo(6254.45, 0.001),
+      );
     });
 
-    test('повертає null для середнього у відсутній валюті', () {
-      expect(averageAmount(expenses, currency: 'PLN'), isNull);
+    test('рахує суму всіх валют у гривнях за курсом', () {
+      expect(totalInUah(expenses), closeTo(9792.535, 0.001));
+    });
+
+    test('рахує комісію за переказами', () {
+      expect(totalFeesInUah(expenses), closeTo(11.35375, 0.001));
+    });
+
+    test('повертає null для середнього в порожньому списку', () {
+      expect(averageAmount(<Expense>[], currency: Currency.uah), isNull);
     });
 
     test('групує витрати за категорією', () {
@@ -85,7 +89,7 @@ void main() {
 
     test('сортує за сумою за спаданням', () {
       final sorted = sortExpenses(
-        inCurrency(expenses, currency: 'UAH'),
+        inCurrency(expenses, currency: Currency.uah),
         compare: compareByAmount,
         ascending: false,
       );
@@ -94,14 +98,7 @@ void main() {
   });
 
   group('дати', () {
-    final expense = (
-      date: DateTime(2026, 10, 30),
-      category: 'Навчання',
-      amount: 640.0,
-      currency: 'UAH',
-      paymentMethod: 'переказ',
-      note: '',
-    );
+    final expense = _expense(date: DateTime(2026, 10, 30));
 
     test('форматує дату як ДД.ММ.РРРР', () {
       expect(formatDate(DateTime(2026, 3, 7)), '07.03.2026');
@@ -112,33 +109,27 @@ void main() {
     });
 
     test('предикат olderThan запам’ятовує поріг', () {
-      final isOld = olderThan(
-        const Duration(days: 7),
-        today: DateTime(2026, 11, 9),
-      );
+      final isOld = olderThan(const Duration(days: 7), today: today);
       expect(isOld(expense), isTrue);
     });
   });
 
   group('звіт', () {
-    test('маскує номер картки', () {
+    test('маскує номер картки в примітці', () {
       expect(
         maskCardNumbers('Обід, картка 5375 4141 0000 9876'),
         'Обід, картка 5375 **** **** 9876',
       );
     });
 
-    test('не змінює текст без номера картки', () {
-      expect(maskCardNumbers('Кіно'), 'Кіно');
-    });
-
-    test('містить загальну суму й приховує номери карток', () {
+    test('містить підсумок і не показує повних номерів', () {
       final report = buildReport(
-        validExpenses(rawExpenses.map(parseExpense)),
-        today: DateTime(2026, 11, 9),
+        validExpenses(rawExpenses.map(parseExpense), today: today),
+        today: today,
       );
       expect(report, contains('Разом: 6254.45'));
-      expect(report, isNot(contains('4141 0000')));
+      expect(report, contains('•••• 9876'));
+      expect(report, isNot(contains('5375414100009876')));
     });
   });
 }

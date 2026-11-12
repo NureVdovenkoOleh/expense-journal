@@ -5,6 +5,7 @@
 /// з накопичувальною змінною.
 library;
 
+import 'currency.dart';
 import 'expense.dart';
 import 'expense_parser.dart';
 import 'expense_validator.dart';
@@ -26,13 +27,13 @@ List<Expense> validExpenses(Iterable<ParseResult> results, {DateTime? today}) =>
 /// тому всі агрегатні функції спершу відбирають одну валюту.
 Iterable<Expense> inCurrency(
   Iterable<Expense> expenses, {
-  required String currency,
+  required Currency currency,
 }) => expenses.where((expense) => expense.currency == currency);
 
 /// Обчислює загальну суму витрат з [expenses] у валюті [currency].
 ///
 /// Конвеєр згортання `where → map → fold`.
-double totalAmount(Iterable<Expense> expenses, {required String currency}) =>
+double totalAmount(Iterable<Expense> expenses, {required Currency currency}) =>
     inCurrency(expenses, currency: currency)
         .map((expense) => expense.amount)
         .fold(0.0, (total, amount) => total + amount);
@@ -41,7 +42,10 @@ double totalAmount(Iterable<Expense> expenses, {required String currency}) =>
 ///
 /// Повертає `null`, якщо витрат у цій валюті немає: ділити на нуль
 /// безглуздо.
-double? averageAmount(Iterable<Expense> expenses, {required String currency}) {
+double? averageAmount(
+  Iterable<Expense> expenses, {
+  required Currency currency,
+}) {
   final count = inCurrency(expenses, currency: currency).length;
   if (count == 0) {
     return null;
@@ -55,12 +59,25 @@ double? averageAmount(Iterable<Expense> expenses, {required String currency}) {
 /// `reduce` на порожній колекції кидає виняток.
 Expense? largestExpense(
   Iterable<Expense> expenses, {
-  required String currency,
+  required Currency currency,
 }) => inCurrency(expenses, currency: currency).fold<Expense?>(
   null,
   (largest, expense) =>
       largest == null || expense.amount > largest.amount ? expense : largest,
 );
+
+/// Обчислює загальну суму [expenses] у гривнях за умовним курсом.
+///
+/// На відміну від [totalAmount], додає витрати в усіх валютах: кожну
+/// суму спершу перераховано в гривні методом [Currency.toUah].
+double totalInUah(Iterable<Expense> expenses) => expenses
+    .map((expense) => expense.amountInUah)
+    .fold(0.0, (total, amount) => total + amount);
+
+/// Обчислює сумарну комісію за всіма витратами [expenses] у гривнях.
+double totalFeesInUah(Iterable<Expense> expenses) => expenses
+    .map((expense) => expense.currency.toUah(expense.fee))
+    .fold(0.0, (total, fee) => total + fee);
 
 /// Перетворює [expenses] на перелік назв категорій без повторів.
 ///
@@ -78,7 +95,7 @@ Map<String, List<Expense>> groupByCategory(Iterable<Expense> expenses) =>
 /// Обчислює суму витрат у валюті [currency] для кожної категорії.
 Map<String, double> totalsByCategory(
   Iterable<Expense> expenses, {
-  required String currency,
+  required Currency currency,
 }) => groupByCategory(inCurrency(expenses, currency: currency)).map(
   (category, items) =>
       MapEntry(category, totalAmount(items, currency: currency)),

@@ -33,7 +33,7 @@ sealed class PaymentMethod {
   /// замість винятку, скористайтеся [tryParse].
   factory PaymentMethod.parse(String text) =>
       tryParse(text) ??
-      (throw FormatException('Невідомий спосіб оплати', text));
+      (throw FormatException('невідомий спосіб оплати «$text»', text));
 
   /// Розбирає спосіб оплати з [text] або повертає `null`.
   static PaymentMethod? tryParse(String text) =>
@@ -66,6 +66,12 @@ final class Cash extends PaymentMethod {
 
   @override
   String get label => 'готівка';
+
+  @override
+  bool operator ==(Object other) => other is Cash;
+
+  @override
+  int get hashCode => (Cash).hashCode;
 
   @override
   double feeFor(double amount) => 0;
@@ -118,4 +124,15 @@ mixin MaskedNumber on PaymentMethod {
 
   @override
   String describe() => '$label $maskedNumber';
+
+  /// Два способи оплати рівні, якщо вони одного типу й мають той самий
+  /// номер.
+  @override
+  bool operator ==(Object other) =>
+      other is MaskedNumber &&
+      other.runtimeType == runtimeType &&
+      other.number == number;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, number);
 }
