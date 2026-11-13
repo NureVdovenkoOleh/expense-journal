@@ -32,4 +32,17 @@ void main() {
       expect(PaymentMethod.tryParse('біткоїн'), isNull);
     });
   });
+
+  group('paymentKind', () {
+    test('розрізняє готівку, Visa, Mastercard і переказ', () {
+      expect(paymentKind(const Cash()), 'Готівка');
+      expect(paymentKind(const CardPayment('4149609012345678')), 'Visa');
+      expect(paymentKind(const CardPayment('5375414100009876')), 'Mastercard');
+      expect(paymentKind(const CardPayment('6011000000000004')), 'Інша картка');
+      expect(
+        paymentKind(const BankTransfer('UA213223130000026007233566001')),
+        'Банківський переказ',
+      );
+    });
+  });
 }

@@ -79,6 +79,21 @@ void main() {
       expect(totalFeesInUah(expenses), closeTo(11.35375, 0.001));
     });
 
+    test('повертає мінімум, максимум і середнє одним записом', () {
+      final stats = amountStats(expenses, currency: Currency.uah);
+      expect(stats?.min, 30);
+      expect(stats?.max, 1630.75);
+      expect(stats?.average, closeTo(521.204, 0.001));
+    });
+
+    test('групує суми за видом оплати', () {
+      final totals = totalsByPaymentKind(expenses);
+      expect(totals['Visa'], closeTo(3538.085, 0.001));
+      expect(totals['Mastercard'], closeTo(2815.90, 0.001));
+      expect(totals['Готівка'], closeTo(1167.80, 0.001));
+      expect(totals['Банківський переказ'], closeTo(2270.75, 0.001));
+    });
+
     test('повертає null для середнього в порожньому списку', () {
       expect(averageAmount(<Expense>[], currency: Currency.uah), isNull);
     });

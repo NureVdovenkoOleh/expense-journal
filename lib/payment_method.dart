@@ -10,17 +10,32 @@ const _visibleDigits = 4;
 /// Умовна комісія банку за переказ — 0,5 % від суми.
 const _transferFeeRate = 0.005;
 
+/// Перша цифра номерів карток Visa.
+const _visaPrefix = '4';
+
+/// Перша цифра номерів карток Mastercard.
+const _mastercardPrefix = '5';
+
 /// Номер картки: рівно 16 цифр.
 final _cardNumberPattern = RegExp(r'^\d{16}$');
 
 /// Український IBAN: літери `UA` і 27 цифр.
 final _ibanPattern = RegExp(r'^UA\d{27}$');
 
+/// Об'єкт, який має назву й уміє описати себе для звіту.
+abstract interface class Describable {
+  /// Коротка назва українською.
+  String get label;
+
+  /// Опис для звіту.
+  String describe();
+}
+
 /// Спосіб оплати витрати.
 ///
 /// Клас запечатаний (`sealed`): усі його підтипи оголошено в цьому файлі,
 /// тому `switch` за способом оплати компілятор перевіряє на вичерпність.
-sealed class PaymentMethod {
+sealed class PaymentMethod implements Describable {
   /// Створює спосіб оплати; викликається лише з підтипів.
   const PaymentMethod();
 
@@ -46,18 +61,32 @@ sealed class PaymentMethod {
         _ => null,
       };
 
-  /// Назва способу оплати українською.
-  String get label;
-
   /// Опис способу оплати для звіту.
   ///
   /// Підтипи з номером рахунку чи картки перевизначають цей метод через
   /// домішку [MaskedNumber].
+  @override
   String describe() => label;
 
   /// Обчислює комісію за оплату суми [amount] цим способом.
   double feeFor(double amount);
 }
+
+/// Визначає вид оплати для групування у звіті: готівка, платіжна
+/// система картки або переказ.
+///
+/// `switch`-вираз не має гілки `default`: [PaymentMethod] запечатаний,
+/// тому компілятор сам перевіряє, що враховано всі його підтипи. Якщо
+/// додати новий підтип, тут виникне помилка компіляції. Гілки для карток
+/// використовують зіставлення зі зразком з охоронцем `when`.
+String paymentKind(PaymentMethod method) => switch (method) {
+  Cash() => 'Готівка',
+  CardPayment(:final number) when number.startsWith(_visaPrefix) => 'Visa',
+  CardPayment(:final number) when number.startsWith(_mastercardPrefix) =>
+    'Mastercard',
+  CardPayment() => 'Інша картка',
+  BankTransfer() => 'Банківський переказ',
+};
 
 /// Готівкова оплата.
 final class Cash extends PaymentMethod {
@@ -111,10 +140,15 @@ final class BankTransfer extends PaymentMethod with MaskedNumber {
 
 /// Маскування номера картки чи рахунку у звіті.
 ///
-/// Обмеження `on PaymentMethod` робить дві речі: дозволяє підмішувати
-/// домішку лише до способів оплати й відкриває всередині неї доступ до
-/// членів [PaymentMethod] — тут до [PaymentMethod.label].
-mixin MaskedNumber on PaymentMethod {
+/// Обмеження `on Describable` робить дві речі: дозволяє підмішувати
+/// домішку лише до класів, що мають назву й опис, і відкриває всередині
+/// неї доступ до членів [Describable] — тут до [Describable.label].
+///
+/// Обмеженням навмисно обрано інтерфейс, а не [PaymentMethod]: домішка
+/// `on PaymentMethod` сама стає підтипом запечатаного класу, і тоді
+/// `switch` у [paymentKind] перестає бути вичерпним — компілятор вимагає
+/// окремої гілки для будь-якого класу з цією домішкою.
+mixin MaskedNumber on Describable {
   /// Повний номер, який не можна показувати у звіті.
   String get number;
 

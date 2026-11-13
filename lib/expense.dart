@@ -28,35 +28,59 @@ typedef _CsvFields = ({
 /// Клас незмінний: усі поля `final`, а «змінити» витрату можна лише
 /// створивши новий об'єкт. Дві витрати з однаковими значеннями всіх полів
 /// вважаються рівними ([operator ==] і [hashCode] перевизначено).
-class Expense implements Identifiable {
+///
+/// Поля й константний конструктор оголошено первинним конструктором
+/// (Dart 3.13) прямо в заголовку класу: параметр з `final` одночасно є
+/// параметром конструктора й полем класу.
+class const Expense({
+  /// Унікальний ідентифікатор витрати, наприклад `E05`.
+  @override required final String id,
+
+  /// Дата витрати.
+  required final DateTime date,
+
+  /// Категорія витрати, наприклад «Продукти».
+  required final String category,
+
+  /// Сума у валюті [currency].
+  required final double amount,
+
+  /// Валюта суми.
+  required final Currency currency,
+
+  /// Спосіб оплати.
+  required final PaymentMethod paymentMethod,
+
+  /// Довільна примітка.
+  final String note = '',
+}) implements Identifiable {
   /// Створює витрату з уже перевірених значень.
-  const Expense({
-    required this.id,
-    required this.date,
-    required this.category,
-    required this.amount,
-    required this.currency,
-    required this.paymentMethod,
-    this.note = '',
-  });
+  ///
+  /// Документаційний коментар класу не документує первинний конструктор,
+  /// тому для коментаря конструктора додано порожнє тіло `this;`.
+  this;
 
   /// Розбирає витрату з рядка формату
   /// `id;дата;категорія;сума;валюта;спосіб оплати;примітка`.
   ///
-  /// Іменований конструктор замінює функцію розбору з лабораторної
-  /// роботи 1. Конструктор не може повернути `null`, тому для
+  /// Замінює функцію розбору з лабораторної роботи 1. Клас із первинним
+  /// конструктором не може мати інших генеративних конструкторів, які
+  /// не перенаправляють виклик, тому це фабричний конструктор. Для
   /// пошкодженого рядка він кидає [FormatException].
-  Expense.fromCsv(String line) : this._fromFields(_splitFields(line));
-
-  /// Перетворює текстові поля [fields] на значення потрібних типів.
-  Expense._fromFields(_CsvFields fields)
-    : id = fields.id,
-      date = _parseDate(fields.date),
-      category = fields.category,
-      amount = _parseAmount(fields.amount),
-      currency = _parseCurrency(fields.currency),
-      paymentMethod = PaymentMethod.parse(fields.paymentMethod),
-      note = fields.note;
+  factory Expense.fromCsv(String line) {
+    // Деструктуризація запису: кожне поле запису стає локальною змінною.
+    final (:id, :date, :category, :amount, :currency, :paymentMethod, :note) =
+        _splitFields(line);
+    return Expense(
+      id: id,
+      date: _parseDate(date),
+      category: category,
+      amount: _parseAmount(amount),
+      currency: _parseCurrency(currency),
+      paymentMethod: PaymentMethod.parse(paymentMethod),
+      note: note,
+    );
+  }
 
   /// Повертає витрату, розібрану з рядка [line], використовуючи кеш.
   ///
@@ -68,27 +92,6 @@ class Expense implements Identifiable {
 
   /// Кеш розібраних рядків для [Expense.cached].
   static final _cache = <String, Expense>{};
-
-  @override
-  final String id;
-
-  /// Дата витрати.
-  final DateTime date;
-
-  /// Категорія витрати, наприклад «Продукти».
-  final String category;
-
-  /// Сума у валюті [currency].
-  final double amount;
-
-  /// Валюта суми.
-  final Currency currency;
-
-  /// Спосіб оплати.
-  final PaymentMethod paymentMethod;
-
-  /// Довільна примітка.
-  final String note;
 
   /// Сума в гривнях за умовним курсом валюти.
   double get amountInUah => currency.toUah(amount);

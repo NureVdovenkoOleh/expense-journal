@@ -58,9 +58,16 @@ String buildReport(
     ..writeln('Підсумки (${currency.code})')
     ..writeln('  Разом: ${_money(totalAmount(items, currency: currency))}');
 
-  final average = averageAmount(items, currency: currency);
-  if (average != null) {
-    buffer.writeln('  Середня витрата: ${_money(average)}');
+  // Функція повертає запис; зразок `case` перевіряє, що він не null,
+  // і одразу розкладає його поля на змінні min, max і average.
+  if (amountStats(items, currency: currency) case (
+    :final min,
+    :final max,
+    :final average,
+  )) {
+    buffer
+      ..writeln('  Середня витрата: ${_money(average)}')
+      ..writeln('  Від ${_money(min)} до ${_money(max)}');
   }
   final largest = largestExpense(items, currency: currency);
   if (largest != null) {
@@ -84,6 +91,15 @@ String buildReport(
     ..sort((a, b) => b.value.compareTo(a.value));
   for (final MapEntry(key: category, value: total) in totals) {
     buffer.writeln('  $category: ${_money(total)}');
+  }
+
+  buffer
+    ..writeln()
+    ..writeln('За видом оплати (UAH за курсом)');
+  final kinds = totalsByPaymentKind(items).entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  for (final MapEntry(key: kind, value: total) in kinds) {
+    buffer.writeln('  $kind: ${_money(total)}');
   }
 
   final byAmount = sortExpenses(

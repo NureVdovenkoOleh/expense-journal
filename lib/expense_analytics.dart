@@ -5,10 +5,13 @@
 /// з накопичувальною змінною.
 library;
 
+import 'dart:math' as math;
+
 import 'currency.dart';
 import 'expense.dart';
 import 'expense_parser.dart';
 import 'expense_validator.dart';
+import 'payment_method.dart';
 
 /// Повертає витрати з [results], які вдалося розібрати й які пройшли
 /// перевірку.
@@ -78,6 +81,43 @@ double totalInUah(Iterable<Expense> expenses) => expenses
 double totalFeesInUah(Iterable<Expense> expenses) => expenses
     .map((expense) => expense.currency.toUah(expense.fee))
     .fold(0.0, (total, fee) => total + fee);
+
+/// Обчислює мінімальну, максимальну й середню суму витрат [expenses]
+/// у валюті [currency].
+///
+/// Повертає запис із трьох іменованих полів, тобто кілька значень
+/// одночасно, або `null`, якщо витрат у цій валюті немає.
+({double min, double max, double average})? amountStats(
+  Iterable<Expense> expenses, {
+  required Currency currency,
+}) {
+  final amounts = inCurrency(
+    expenses,
+    currency: currency,
+  ).map((expense) => expense.amount).toList();
+  if (amounts.isEmpty) {
+    return null;
+  }
+  // Список не порожній, тому reduce тут безпечний.
+  return (
+    min: amounts.reduce(math.min),
+    max: amounts.reduce(math.max),
+    average:
+        amounts.fold(0.0, (total, amount) => total + amount) / amounts.length,
+  );
+}
+
+/// Обчислює суму витрат у гривнях для кожного виду оплати
+/// (див. [paymentKind]).
+Map<String, double> totalsByPaymentKind(Iterable<Expense> expenses) =>
+    expenses.fold(<String, double>{}, (totals, expense) {
+      totals.update(
+        paymentKind(expense.paymentMethod),
+        (total) => total + expense.amountInUah,
+        ifAbsent: () => expense.amountInUah,
+      );
+      return totals;
+    });
 
 /// Перетворює [expenses] на перелік назв категорій без повторів.
 ///
