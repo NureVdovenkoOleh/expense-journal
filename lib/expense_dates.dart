@@ -9,22 +9,35 @@ const staleAge = Duration(days: 30);
 /// Кількість цифр, якими записують день і місяць.
 const _datePartWidth = 2;
 
-/// Записує [date] у форматі `ДД.ММ.РРРР`.
-String formatDate(DateTime date) {
-  final day = date.day.toString().padLeft(_datePartWidth, '0');
-  final month = date.month.toString().padLeft(_datePartWidth, '0');
-  return '$day.$month.${date.year}';
+/// Методи розширення для дат журналу витрат.
+///
+/// Розширення додає методи до вбудованого типу [DateTime], не змінюючи
+/// й не успадковуючи його: виклик `date.toDisplayDate()` читається
+/// природніше, ніж `formatDate(date)`.
+extension ExpenseDate on DateTime {
+  /// Записує дату у форматі `ДД.ММ.РРРР`.
+  String toDisplayDate() {
+    final dayText = day.toString().padLeft(_datePartWidth, '0');
+    final monthText = month.toString().padLeft(_datePartWidth, '0');
+    return '$dayText.$monthText.$year';
+  }
+
+  /// Та сама дата без часу доби, в UTC.
+  ///
+  /// Без цього перехід на літній чи зимовий час додає або забирає
+  /// годину, і [Duration.inDays] може помилитися на один день.
+  DateTime get dateOnly => DateTime.utc(year, month, day);
+
+  /// Кількість повних днів від цієї дати до [other].
+  int daysUntil(DateTime other) => other.dateOnly.difference(dateOnly).inDays;
 }
 
 /// Обчислює, скільки повних днів минуло від дати витрати [expense]
 /// до [today].
 ///
 /// Якщо [today] не передано, береться поточна дата.
-int ageInDays(Expense expense, {DateTime? today}) {
-  final reference = _dateOnly(today ?? DateTime.now());
-  final Duration age = reference.difference(_dateOnly(expense.date));
-  return age.inDays;
-}
+int ageInDays(Expense expense, {DateTime? today}) =>
+    expense.date.daysUntil(today ?? DateTime.now());
 
 /// Створює предикат, який перевіряє, чи витрата старша за [age].
 ///
@@ -35,10 +48,3 @@ bool Function(Expense) olderThan(Duration age, {DateTime? today}) {
   final reference = today ?? DateTime.now();
   return (expense) => expense.date.add(age).isBefore(reference);
 }
-
-/// Відкидає час доби й переводить [date] в UTC.
-///
-/// Без цього перехід на літній чи зимовий час додає або забирає годину,
-/// і [Duration.inDays] може помилитися на один день.
-DateTime _dateOnly(DateTime date) =>
-    DateTime.utc(date.year, date.month, date.day);

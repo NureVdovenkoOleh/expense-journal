@@ -116,11 +116,15 @@ void main() {
     final expense = _expense(date: DateTime(2026, 10, 30));
 
     test('форматує дату як ДД.ММ.РРРР', () {
-      expect(formatDate(DateTime(2026, 3, 7)), '07.03.2026');
+      expect(DateTime(2026, 3, 7).toDisplayDate(), '07.03.2026');
     });
 
     test('рахує вік запису в днях', () {
       expect(ageInDays(expense, today: DateTime(2026, 11, 9)), 10);
+    });
+
+    test('рахує дні між датами попри перехід на зимовий час', () {
+      expect(DateTime(2026, 10, 20).daysUntil(DateTime(2026, 10, 30)), 10);
     });
 
     test('предикат olderThan запам’ятовує поріг', () {

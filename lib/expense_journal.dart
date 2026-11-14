@@ -17,3 +17,4 @@ export 'expense_report.dart';
 export 'expense_validator.dart';
 export 'identifiable.dart';
 export 'payment_method.dart';
+export 'repository.dart';

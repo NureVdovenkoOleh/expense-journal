@@ -52,7 +52,7 @@ String buildReport(
   final reference = today ?? DateTime.now();
   final buffer = StringBuffer()
     ..writeln('ЗВІТ ЗА ЖУРНАЛОМ ВИТРАТ')
-    ..writeln('Сформовано: ${formatDate(reference)}')
+    ..writeln('Сформовано: ${reference.toDisplayDate()}')
     ..writeln('Коректних записів: ${items.length}')
     ..writeln()
     ..writeln('Підсумки (${currency.code})')
@@ -132,7 +132,7 @@ String _row(
   required String separator,
   required DateTime today,
 }) => [
-  formatDate(expense.date),
+  expense.date.toDisplayDate(),
   expense.category,
   '${_money(expense.amount)} ${expense.currency.code}',
   expense.paymentMethod.describe(),

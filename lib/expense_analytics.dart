@@ -13,6 +13,18 @@ import 'expense_parser.dart';
 import 'expense_validator.dart';
 import 'payment_method.dart';
 
+/// Підсумовування числової ознаки елементів будь-якої колекції.
+///
+/// Узагальнене розширення вбудованого типу [Iterable]: параметр типу `T`
+/// дозволяє викликати [sumOf] для колекції будь-яких елементів.
+extension SumOf<T> on Iterable<T> {
+  /// Додає значення, які [selector] повертає для кожного елемента.
+  ///
+  /// Для порожньої колекції повертає 0.
+  double sumOf(double Function(T item) selector) =>
+      fold(0.0, (total, item) => total + selector(item));
+}
+
 /// Повертає витрати з [results], які вдалося розібрати й які пройшли
 /// перевірку.
 ///
@@ -73,14 +85,12 @@ Expense? largestExpense(
 ///
 /// На відміну від [totalAmount], додає витрати в усіх валютах: кожну
 /// суму спершу перераховано в гривні методом [Currency.toUah].
-double totalInUah(Iterable<Expense> expenses) => expenses
-    .map((expense) => expense.amountInUah)
-    .fold(0.0, (total, amount) => total + amount);
+double totalInUah(Iterable<Expense> expenses) =>
+    expenses.sumOf((expense) => expense.amountInUah);
 
 /// Обчислює сумарну комісію за всіма витратами [expenses] у гривнях.
-double totalFeesInUah(Iterable<Expense> expenses) => expenses
-    .map((expense) => expense.currency.toUah(expense.fee))
-    .fold(0.0, (total, fee) => total + fee);
+double totalFeesInUah(Iterable<Expense> expenses) =>
+    expenses.sumOf((expense) => expense.currency.toUah(expense.fee));
 
 /// Обчислює мінімальну, максимальну й середню суму витрат [expenses]
 /// у валюті [currency].
