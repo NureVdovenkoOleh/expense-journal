@@ -25,3 +25,9 @@ linter:
     - prefer_single_quotes
     - directives_ordering
     - always_declare_return_types
+    # Лабораторна робота 3: кожен Future має бути або дочеканий через
+    # await, або явно позначений як навмисно не дочеканий.
+    # В async-функції: виклик, результат якого (Future) не використано.
+    - unawaited_futures
+    # У синхронній функції: Future, який неможливо дочекатися.
+    - discarded_futures
