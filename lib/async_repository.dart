@@ -56,6 +56,15 @@ class AsyncRepository<T extends Identifiable> {
     return _store.findById(id);
   }
 
+  /// Повертає сутність з ідентифікатором [id].
+  ///
+  /// На відміну від [load], не повертає `null`: якщо сутності немає,
+  /// [Future] завершується помилкою [EntityNotFoundException].
+  Future<T> require(String id) async {
+    await _wait();
+    return _store.findById(id) ?? (throw EntityNotFoundException(id));
+  }
+
   /// Повертає всі сутності в порядку додавання.
   Future<List<T>> loadAll() async {
     await _wait();

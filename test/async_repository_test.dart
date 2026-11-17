@@ -37,6 +37,22 @@ void main() {
       await expectLater(repository.load('ZZ'), completion(isNull));
     });
 
+    test('require повертає сутність або завершується помилкою', () async {
+      expect((await repository.require('A2')).id, 'A2');
+      await expectLater(
+        repository.require('ZZ'),
+        throwsA(isA<EntityNotFoundException>()),
+      );
+    });
+
+    test('Future.wait повертає результати в порядку запитів', () async {
+      final loaded = await Future.wait([
+        repository.require('A2'),
+        repository.require('A1'),
+      ]);
+      expect(loaded.map((expense) => expense.id), ['A2', 'A1']);
+    });
+
     test('save додає нову сутність', () async {
       await repository.save(_expense('A3'));
       expect(await repository.load('A3'), isNotNull);
