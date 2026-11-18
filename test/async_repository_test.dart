@@ -53,6 +53,26 @@ void main() {
       expect(loaded.map((expense) => expense.id), ['A2', 'A1']);
     });
 
+    test('watchAll видає сутності в порядку додавання', () async {
+      await expectLater(
+        repository.watchAll(interval: _testLatency),
+        emitsInOrder([_expense('A1'), _expense('A2'), emitsDone]),
+      );
+    });
+
+    test('changes передає події в порядку операцій', () async {
+      final expectation = expectLater(
+        repository.changes,
+        emitsInOrder([
+          isA<ItemSaved<Expense>>().having((e) => e.item.id, 'id', 'A3'),
+          isA<ItemDeleted<Expense>>().having((e) => e.id, 'id', 'A1'),
+        ]),
+      );
+      await repository.save(_expense('A3'));
+      await repository.delete('A1');
+      await expectation;
+    });
+
     test('save додає нову сутність', () async {
       await repository.save(_expense('A3'));
       expect(await repository.load('A3'), isNotNull);
