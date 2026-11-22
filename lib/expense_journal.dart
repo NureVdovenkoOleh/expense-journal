@@ -1,24 +1,30 @@
-/// Розбір, перевірка та агрегація журналу особистих витрат.
+/// Журнал особистих витрат: розбір, перевірка, аналітика, збереження
+/// та обмін даними.
 ///
-/// Лабораторна робота 1: дані подано колекціями й записами, обробка
-/// виконується функціями, класи не використовуються.
+/// Це фасад пакета — єдиний файл, який імпортують `bin/`, тести й
+/// інші пакети. Реалізацію розміщено в `lib/src/`: за домовленістю
+/// Dart файли звідти не імпортують напряму, тож структуру `src/` можна
+/// змінювати, не ламаючи коду, що використовує пакет. Назовні видно
+/// лише те, що перелічено нижче в директивах `export`.
 ///
-/// Лабораторна робота 2: модель предметної області поступово
-/// переводиться на класи, перелічення й ієрархії типів.
-///
-/// Лабораторна робота 3: додано асинхронний шар доступу до даних.
+/// Історія проєкту:
+/// - лабораторна робота 1 — функції, колекції, рядки, дати;
+/// - лабораторна робота 2 — класи, ієрархії, домішки, узагальнення;
+/// - лабораторна робота 3 — асинхронність, потоки, ізоляти;
+/// - лабораторна робота 4 — структура пакета, файли, HTTP, служба.
 library;
 
-export 'async_repository.dart';
-export 'currency.dart';
-export 'expense.dart';
-export 'expense_analytics.dart';
-export 'expense_data.dart';
-export 'expense_dates.dart';
-export 'expense_parser.dart';
-export 'expense_report.dart';
-export 'expense_simulation.dart';
-export 'expense_validator.dart';
-export 'identifiable.dart';
-export 'payment_method.dart';
-export 'repository.dart';
+// Директиви впорядковано за абеткою (правило directives_ordering).
+export 'src/async_repository.dart';
+export 'src/currency.dart';
+export 'src/expense.dart';
+export 'src/expense_analytics.dart';
+export 'src/expense_data.dart';
+export 'src/expense_dates.dart';
+export 'src/expense_parser.dart';
+export 'src/expense_report.dart';
+export 'src/expense_simulation.dart';
+export 'src/expense_validator.dart';
+export 'src/identifiable.dart';
+export 'src/payment_method.dart';
+export 'src/repository.dart';
