@@ -16,6 +16,7 @@ library;
 
 // Директиви впорядковано за абеткою (правило directives_ordering).
 export 'src/async_repository.dart';
+export 'src/cli.dart';
 export 'src/currency.dart';
 export 'src/expense.dart';
 export 'src/expense_analytics.dart';
@@ -26,5 +27,7 @@ export 'src/expense_report.dart';
 export 'src/expense_simulation.dart';
 export 'src/expense_validator.dart';
 export 'src/identifiable.dart';
+export 'src/json_storage.dart';
+export 'src/large_file.dart';
 export 'src/payment_method.dart';
 export 'src/repository.dart';

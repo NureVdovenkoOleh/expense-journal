@@ -82,6 +82,32 @@ class const Expense({
     );
   }
 
+  /// Створює витрату з об'єкта JSON [json] — результату `jsonDecode`.
+  ///
+  /// `jsonDecode` повертає `dynamic`, тому кожне поле явно приводиться до
+  /// очікуваного типу (`as String`, `as num`). Якщо поля немає або воно
+  /// має інший тип, приведення кидає [TypeError]; конструктор перетворює
+  /// його на [FormatException], щоб код, який читає файл чи відповідь
+  /// сервера, обробляв одну помилку «некоректні дані».
+  ///
+  /// Сума читається як `num`, бо JSON не розрізняє цілі й дробові числа:
+  /// `100` декодується в `int`, а `100.5` — у `double`.
+  factory Expense.fromJson(Map<String, Object?> json) {
+    try {
+      return Expense(
+        id: json['id'] as String,
+        date: _parseDate(json['date'] as String),
+        category: json['category'] as String,
+        amount: (json['amount'] as num).toDouble(),
+        currency: _parseCurrency(json['currency'] as String),
+        paymentMethod: PaymentMethod.parse(json['paymentMethod'] as String),
+        note: json['note'] as String? ?? '',
+      );
+    } on TypeError {
+      throw FormatException('некоректний запис витрати в JSON', json);
+    }
+  }
+
   /// Повертає витрату, розібрану з рядка [line], використовуючи кеш.
   ///
   /// Фабричний конструктор: для рядка, який уже розбирали, повертає
@@ -92,6 +118,20 @@ class const Expense({
 
   /// Кеш розібраних рядків для [Expense.cached].
   static final _cache = <String, Expense>{};
+
+  /// Перетворює витрату на об'єкт JSON, придатний для `jsonEncode`.
+  ///
+  /// Дата записується у форматі ISO 8601 без часу, валюта — кодом,
+  /// спосіб оплати — текстом [PaymentMethod.toText].
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'date': _isoDate(date),
+    'category': category,
+    'amount': amount,
+    'currency': currency.code,
+    'paymentMethod': paymentMethod.toText(),
+    'note': note,
+  };
 
   /// Сума в гривнях за умовним курсом валюти.
   double get amountInUah => currency.toUah(amount);
@@ -116,7 +156,7 @@ class const Expense({
 
   @override
   String toString() =>
-      'Expense($id, ${date.toIso8601String().split('T').first}, '
+      'Expense($id, ${_isoDate(date)}, '
       '$category, $amount ${currency.code}, ${paymentMethod.describe()})';
 
   /// Ділить рядок [line] на сім полів.
@@ -173,6 +213,10 @@ class const Expense({
   static Currency _parseCurrency(String code) =>
       Currency.tryParse(code) ??
       (throw FormatException('невідома валюта «$code»', code));
+
+  /// Записує дату [value] у форматі `РРРР-ММ-ДД`.
+  static String _isoDate(DateTime value) =>
+      value.toIso8601String().split('T').first;
 
   /// Записує [value] двома цифрами з провідним нулем: 3 → «03».
   static String _twoDigits(int value) =>

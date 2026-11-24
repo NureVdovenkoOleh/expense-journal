@@ -70,6 +70,13 @@ sealed class PaymentMethod implements Describable {
 
   /// Обчислює комісію за оплату суми [amount] цим способом.
   double feeFor(double amount);
+
+  /// Записує спосіб оплати в текстовому форматі, який розуміє [parse]:
+  /// `готівка`, `картка:<номер>` або `переказ:<IBAN>`.
+  ///
+  /// Використовується для збереження у файл: [parse] і [toText] взаємно
+  /// обернені.
+  String toText();
 }
 
 /// Визначає вид оплати для групування у звіті: готівка, платіжна
@@ -104,6 +111,9 @@ final class Cash extends PaymentMethod {
 
   @override
   double feeFor(double amount) => 0;
+
+  @override
+  String toText() => label;
 }
 
 /// Оплата банківською карткою.
@@ -120,6 +130,9 @@ final class CardPayment extends PaymentMethod with MaskedNumber {
 
   @override
   double feeFor(double amount) => 0;
+
+  @override
+  String toText() => '$label$_detailsSeparator$number';
 }
 
 /// Банківський переказ на рахунок IBAN.
@@ -136,6 +149,9 @@ final class BankTransfer extends PaymentMethod with MaskedNumber {
 
   @override
   double feeFor(double amount) => amount * _transferFeeRate;
+
+  @override
+  String toText() => '$label$_detailsSeparator$number';
 }
 
 /// Маскування номера картки чи рахунку у звіті.
