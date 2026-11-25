@@ -18,6 +18,7 @@ library;
 export 'src/async_repository.dart';
 export 'src/cli.dart';
 export 'src/currency.dart';
+export 'src/exchange_rates.dart';
 export 'src/expense.dart';
 export 'src/expense_analytics.dart';
 export 'src/expense_data.dart';

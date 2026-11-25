@@ -5,9 +5,11 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
 import 'currency.dart';
+import 'exchange_rates.dart';
 import 'expense.dart';
 import 'expense_analytics.dart';
 import 'expense_data.dart';
@@ -50,20 +52,33 @@ const exitDataError = 65;
 /// Код завершення: помилка читання чи запису файлу (EX_IOERR).
 const exitIoError = 74;
 
+/// Код завершення: зовнішня служба недоступна (EX_UNAVAILABLE).
+const exitUnavailable = 69;
+
+/// Код завершення: зовнішня служба відповіла некоректно (EX_PROTOCOL).
+const exitProtocolError = 76;
+
+/// Створює HTTP-клієнт для одного запуску застосунку.
+typedef HttpClientFactory = http.Client Function();
+
 /// Запускає застосунок з аргументами [arguments] і повертає код
 /// завершення.
 ///
 /// Звичайний вивід іде в [out], повідомлення про помилки — в [err]. За
 /// замовчуванням це `stdout` і `stderr`; тести передають власні буфери,
 /// щоб перевірити вивід, не запускаючи окремий процес.
+///
+/// [httpClient] створює клієнт для мережевих запитів. За замовчуванням
+/// це справжній `http.Client`; тести передають `MockClient`.
 Future<int> runCli(
   List<String> arguments, {
   StringSink? out,
   StringSink? err,
+  HttpClientFactory httpClient = http.Client.new,
 }) async {
   final output = out ?? stdout;
   final errors = err ?? stderr;
-  final runner = buildCommandRunner(output, errors);
+  final runner = buildCommandRunner(output, errors, httpClient: httpClient);
   try {
     return await runner.run(arguments) ?? exitSuccess;
   } on UsageException catch (exception) {
@@ -80,24 +95,34 @@ Future<int> runCli(
       'Помилка файлу: ${exception.message} (${exception.path ?? '—'})',
     );
     return exitIoError;
+  } on RatesException catch (exception) {
+    errors.writeln('Не вдалося отримати курси: ${exception.message}');
+    return switch (exception) {
+      RatesConnectionException() || RatesHttpException() => exitUnavailable,
+      RatesFormatException() => exitProtocolError,
+    };
   }
 }
 
 /// Створює набір команд застосунку з глобальною опцією `--data`.
-CommandRunner<int> buildCommandRunner(StringSink out, StringSink err) =>
-    CommandRunner<int>(executableName, 'Журнал особистих витрат.')
-      ..argParser.addOption(
-        'data',
-        abbr: 'd',
-        help: 'Файл журналу у форматі JSON.',
-        valueHelp: 'шлях',
-        defaultsTo: defaultDataPath,
-      )
-      ..addCommand(ImportCommand(out, err))
-      ..addCommand(ListCommand(out, err))
-      ..addCommand(ReportCommand(out, err))
-      ..addCommand(GenerateCommand(out, err))
-      ..addCommand(StatsCommand(out, err));
+CommandRunner<int> buildCommandRunner(
+  StringSink out,
+  StringSink err, {
+  HttpClientFactory httpClient = http.Client.new,
+}) => CommandRunner<int>(executableName, 'Журнал особистих витрат.')
+  ..argParser.addOption(
+    'data',
+    abbr: 'd',
+    help: 'Файл журналу у форматі JSON.',
+    valueHelp: 'шлях',
+    defaultsTo: defaultDataPath,
+  )
+  ..addCommand(ImportCommand(out, err))
+  ..addCommand(ListCommand(out, err))
+  ..addCommand(ReportCommand(out, err))
+  ..addCommand(GenerateCommand(out, err))
+  ..addCommand(StatsCommand(out, err))
+  ..addCommand(RatesCommand(out, err, httpClient));
 
 /// Спільна основа команд: потоки виводу й доступ до аргументів.
 abstract class JournalCommand extends Command<int> {
@@ -332,6 +357,60 @@ class StatsCommand extends JournalCommand {
       ..sort((a, b) => b.value.compareTo(a.value));
     for (final MapEntry(key: category, value: total) in sorted) {
       out.writeln('  $category: ${total.toStringAsFixed(2)} UAH');
+    }
+    return exitSuccess;
+  }
+}
+
+/// Команда `rates`: порівнює умовні курси застосунку з офіційними.
+class RatesCommand extends JournalCommand {
+  /// Створює команду, яка пише в [out] і [err] і створює HTTP-клієнт
+  /// функцією [createClient].
+  RatesCommand(super.out, super.err, this.createClient) {
+    argParser.addOption(
+      'endpoint',
+      help: 'Адреса служби курсів (для перевірки обробки помилок).',
+      valueHelp: 'url',
+      defaultsTo: '$nbuRatesEndpoint',
+    );
+  }
+
+  /// Створює HTTP-клієнт для запитів цієї команди.
+  final HttpClientFactory createClient;
+
+  @override
+  String get name => 'rates';
+
+  @override
+  String get description =>
+      'Отримує офіційні курси НБУ й порівнює їх з умовними курсами '
+      'застосунку.';
+
+  @override
+  Future<int> run() async {
+    final endpoint = Uri.tryParse(args.option('endpoint') ?? '');
+    if (endpoint == null || !endpoint.hasScheme) {
+      throw UsageException('Некоректна адреса служби.', usage);
+    }
+    final foreign = Currency.values.where((c) => c != Currency.uah);
+
+    // Кілька запитів до одного хоста йдуть через один клієнт: він
+    // повторно використовує з'єднання. Клієнт закривається у finally —
+    // навіть якщо запит завершився помилкою.
+    final client = createClient();
+    try {
+      final rates = NbuRatesClient(client, endpoint: endpoint);
+      for (final currency in foreign) {
+        final official = await rates.fetchRate(currency);
+        final difference = (currency.rateToUah - official.rate).abs();
+        out.writeln(
+          '${currency.code}: офіційний ${official.rate.toStringAsFixed(4)}, '
+          'умовний ${currency.rateToUah}, '
+          'різниця ${difference.toStringAsFixed(2)} грн',
+        );
+      }
+    } finally {
+      client.close();
     }
     return exitSuccess;
   }
