@@ -132,6 +132,19 @@ void main() {
     });
   });
 
+  test('відповідь не розкриває номерів карток і рахунків', () async {
+    final card = await bodyOf(await get('/items/E01'));
+    expect(card, containsPair('paymentMethod', 'картка •••• 9876'));
+
+    final note = await bodyOf(await get('/items/E13'));
+    expect(note, containsPair('note', contains('5375 **** **** 9876')));
+
+    final all = await (await get('/items')).readAsString();
+    expect(all, isNot(contains('5375414100009876')));
+    expect(all, isNot(contains('4141 0000')));
+    expect(all, isNot(contains('UA213223130000026007233566001')));
+  });
+
   test('невідомий маршрут дає 404 у форматі JSON', () async {
     final response = await get('/unknown');
     expect(response.statusCode, 404);

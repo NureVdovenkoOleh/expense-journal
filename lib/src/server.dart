@@ -9,6 +9,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'async_repository.dart';
 import 'currency.dart';
 import 'expense.dart';
+import 'expense_report.dart';
 import 'expense_validator.dart';
 
 /// Порт служби за замовчуванням.
@@ -36,6 +37,19 @@ Response jsonResponse(Object? body, {int status = 200, String? location}) =>
 /// обробляти всі помилки.
 Response errorResponse(int status, String message) =>
     jsonResponse({'error': message}, status: status);
+
+/// Перетворює витрату [expense] на JSON для відповіді служби.
+///
+/// На відміну від [Expense.toJson], який служить для збереження у файл,
+/// публічне представлення не розкриває платіжних реквізитів: спосіб
+/// оплати подано як `картка •••• 9876`, а номери карток у примітці
+/// замасковано. Будь-хто, хто має доступ до служби, бачить лише те, що
+/// бачив би у текстовому звіті.
+Map<String, Object?> publicJson(Expense expense) => {
+  ...expense.toJson(),
+  'paymentMethod': expense.paymentMethod.describe(),
+  'note': maskCardNumbers(expense.note),
+};
 
 /// Проміжний обробник, який записує кожен запит у журнал [log].
 ///
@@ -124,7 +138,7 @@ Future<Response> _listItems(
         (currency == null || expense.currency == currency) &&
         (minAmount == null || expense.amount >= minAmount),
   );
-  return jsonResponse([for (final expense in items) expense.toJson()]);
+  return jsonResponse([for (final expense in items) publicJson(expense)]);
 }
 
 /// `GET /items/<id>`: одна витрата або 404.
@@ -132,7 +146,7 @@ Future<Response> _getItem(
   AsyncRepository<Expense> repository,
   String id,
 ) async => switch (await repository.load(id)) {
-  final Expense expense => jsonResponse(expense.toJson()),
+  final Expense expense => jsonResponse(publicJson(expense)),
   null => errorResponse(404, 'витрати «$id» немає'),
 };
 
@@ -168,7 +182,7 @@ Future<Response> _createItem(
 
   await repository.save(expense);
   return jsonResponse(
-    expense.toJson(),
+    publicJson(expense),
     status: 201,
     location: '/items/${expense.id}',
   );
